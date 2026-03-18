@@ -67,6 +67,26 @@ body{
     font-size:22px;
 }
 
+body {
+  margin: 0;
+  background: black;
+  color: #00ff41;
+  font-family: monospace;
+  overflow: hidden;
+}
+
+#matrix {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+.terminal {
+  position: relative;
+  padding: 20px;
+}
+
 </style>
 </head>
 
@@ -75,8 +95,12 @@ body{
 <canvas id="matrix"></canvas>
 
 <div class="terminal">
-    <pre id="bootText"></pre>
+  <pre id="bootText"></pre>
 </div>
+
+<script src="script.js"></script>
+
+</body>
 
 <script>
 /* =========================
