@@ -52,12 +52,14 @@ canvas{
 <canvas id="matrix"></canvas>
 
 <div class="terminal">
-    <pre id="bootText"></pre>
 
-    <div id="output"></div>
+<pre id="bootText"></pre>
 
-    <span>> </span>
-    <input id="commandInput" autofocus />
+<div id="output"></div>
+
+<span>> </span>
+<input id="commandInput" autofocus>
+
 </div>
 
 <script>
@@ -200,6 +202,7 @@ input.addEventListener("keydown", async function(e){
                 output.innerHTML +=
                     "Your IP: " + data.ip + "<br><br>";
 
+
             }catch{
                 output.innerHTML += "Failed to get IP<br>";
             }
@@ -218,4 +221,6 @@ input.addEventListener("keydown", async function(e){
 
 </body>
 </html>
+
+
 
