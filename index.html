@@ -285,34 +285,36 @@ input.addEventListener("keydown", async function(e){
 <div id="map" style="height:500px; margin-top:40px;"></div>
 
 <script>
-  // buat map
-  var map = L.map('map').setView([0,0], 2);
+window.onload = function() {
 
-  // map layer
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
+    // buat map
+    var map = L.map('map').setView([0,0], 2);
 
-  // ambil lokasi pengunjung
-  if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(function(position){
+    // layer map
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data © OpenStreetMap'
+    }).addTo(map);
 
-          var lat = position.coords.latitude;
-          var lon = position.coords.longitude;
+    // ambil lokasi pengunjung
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position){
 
-          // pindahkan kamera map
-          map.setView([lat, lon], 15);
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
 
-          // pin lokasi
-          L.marker([lat, lon])
-            .addTo(map)
-            .bindPopup("📍 Kamu di sini")
-            .openPopup();
+            map.setView([lat, lon], 15);
 
-      });
-  } else {
-      alert("Browser tidak support GPS");
-  }
+            L.marker([lat, lon])
+              .addTo(map)
+              .bindPopup("📍 Kamu di sini")
+              .openPopup();
+
+        });
+    } else {
+        alert("Browser tidak support GPS");
+    }
+
+};
 
 </script>
 
