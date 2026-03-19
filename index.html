@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>ACCESS TERMINAL</title>
+<title>Basakencana Map</title>
   <!-- LEAFLET MAP -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -281,6 +281,38 @@ input.addEventListener("keydown", async function(e){
         window.scrollTo(0, document.body.scrollHeight);
     }
 });
+
+<div id="map" style="height:500px; margin-top:40px;"></div>
+
+<script>
+  // buat map
+  var map = L.map('map').setView([0,0], 2);
+
+  // map layer
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  // ambil lokasi pengunjung
+  if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function(position){
+
+          var lat = position.coords.latitude;
+          var lon = position.coords.longitude;
+
+          // pindahkan kamera map
+          map.setView([lat, lon], 15);
+
+          // pin lokasi
+          L.marker([lat, lon])
+            .addTo(map)
+            .bindPopup("📍 Kamu di sini")
+            .openPopup();
+
+      });
+  } else {
+      alert("Browser tidak support GPS");
+  }
 
 </script>
 
