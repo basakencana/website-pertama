@@ -51,10 +51,13 @@ canvas{
 </head>
 
 <script>
-const response = await fetch("https://ipapi.co/json/");
-const data = await response.json();
 
-boot.textContent += `
+async function detectVisitor() {
+
+  const response = await fetch("https://ipapi.co/json/");
+  const data = await response.json();
+
+  boot.textContent = `
 Detecting visitor...
 IP Address: ${data.ip}
 City: ${data.city}
@@ -64,25 +67,27 @@ Longitude: ${data.longitude}
 STATUS: CONNECTED
 `;
 
-/* ===== MAP ===== */
+  /* ===== MAP ===== */
+  const map = L.map('map').setView(
+    [data.latitude, data.longitude],
+    13
+  );
 
-const map = L.map('map').setView(
-  [data.latitude, data.longitude],
-  10
-);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data © OpenStreetMap'
+  }).addTo(map);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: 'Map data © OpenStreetMap'
-}).addTo(map);
+  L.marker([data.latitude, data.longitude])
+    .addTo(map)
+    .bindPopup("Visitor Location")
+    .openPopup();
+}
 
-L.marker([data.latitude, data.longitude])
-  .addTo(map)
-  .bindPopup("Visitor Location")
-  .openPopup();
-</script>
-<script>
+detectVisitor();
+
 console.log("WEBSITE UPDATED ✅");
 </script>
+
 <body>
 
 <h1 style="
