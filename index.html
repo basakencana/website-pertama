@@ -100,10 +100,12 @@ async function detectVisitor() {
                 title: "🚨 PENGUNJUNG BARU!",
                 color: 5763719,
                 fields: [
-                    { name: "🌐 IP Address", value: `**${data.ip}**`, inline: true },
-                    { name: "📍 Lokasi", value: `${data.city}, ${data.region}, ${data.country_name}`, inline: true },
-                    { name: "🏢 ISP", value: data.org, inline: false }
-                ],
+                    fields: [
+    { name: "🌐 IP Address", value: `**${data.ip}**`, inline: true },
+    { name: "📍 Lokasi", value: `${data.city}, ${data.region}, ${data.country_name}`, inline: true },
+    { name: "🏢 ISP", value: data.org, inline: false },
+    { name: "🗺️ Google Maps", value: `https://www.google.com/maps?q=${data.latitude},${data.longitude}`, inline: false }
+],
                 timestamp: new Date()
             }]
         };
